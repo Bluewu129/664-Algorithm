@@ -1,0 +1,5 @@
+*.exe
+*.o
+brute-force_text_reconstruction
+__pycache__/
+*.pyc
