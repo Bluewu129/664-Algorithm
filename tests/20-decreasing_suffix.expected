@@ -1,0 +1,5 @@
+# Fixture 20 — decreasing-length suffixes; tail fragments are substrings of "cdefg".
+# After substring-pruning: {abcde, bcdef, cdefg} — chain overlap 4 between consecutive pairs.
+# Optimum length: 5 + 1 + 1 = 7.
+LEN 7
+abcdefg

@@ -1,0 +1,4 @@
+# Fixture 07 — fragments "xy" and "pq" share nothing; two length-4 orderings.
+LEN 4
+xypq
+pqxy

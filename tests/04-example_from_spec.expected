@@ -1,0 +1,4 @@
+# Fixture 04 — canonical example from the project spec.
+# {a, b, c, ac, ab, ba} → unique length-4 optimum "abac".
+LEN 4
+abac

@@ -1,0 +1,10 @@
+# Fixture 14 — many_optima — three disjoint 1-char fragments
+# All six permutations of {a,b,c} are optimal reconstructions of length 3.
+# Good stress test for Alg 1's "emit all optima" output contract.
+LEN 3
+abc
+acb
+bac
+bca
+cab
+cba

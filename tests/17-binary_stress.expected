@@ -1,0 +1,8 @@
+# Fixture 17 — binary_stress — 18 binary fragments, alphabet {0,1}
+# After substring-pruning: {0100, 1001, 0011, 01101, 11010} (5 fragments)
+# Total chars 22 − best Hamiltonian path weight 13 (= 4+3+3+3) = 9
+# Best ordering example: 0100 → 1001 → 0011 → 01101 → 11010
+# Sample optimal reconstructions (other length-9 strings may also exist):
+LEN 9
+010011010
+011010011

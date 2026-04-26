@@ -1,0 +1,9 @@
+# Fixture 13 — cross_overlapping — 5 cyclic rotations of "abcde"
+# Minimum superstring: n*l - (n-1)*max_overlap = 5*4 - 4*3 = 8
+# Five equivalent cyclic rotations as optimal reconstructions.
+LEN 8
+abcdeabc
+bcdeabcd
+cdeabcde
+deabcdea
+eabcdeab

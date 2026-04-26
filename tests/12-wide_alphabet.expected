@@ -1,0 +1,5 @@
+# Fixture 12 — wide_alphabet — 12 fragments drawn from "thequickbrown"
+# Alphabet: {t,h,e,q,u,i,c,k,b,r,o,w,n} = 13 distinct characters
+# After substring-pruning: theq, hequ, equi, quic, uick, ickb, ckbr, kbro, brow, rown (10)
+LEN 13
+thequickbrown

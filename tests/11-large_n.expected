@@ -1,0 +1,5 @@
+# Fixture 11 — large_n — 15 fragments drawn from "performance"
+# After substring-pruning: perf, form, orma, rman, manc, ance (6 fragments)
+# All 6 are consecutive length-4 windows over "performance".
+LEN 11
+performance

@@ -1,0 +1,9 @@
+# Fixture 16 — heavy_pruning — 12 fragments, 8 of which are substrings of 4 "parents"
+# Parents: internet(8), computer(8), science(7), program(7) — no pairwise overlap
+# After substring-pruning: 4 parents remain. Optimum = 8+8+7+7 = 30.
+# Any ordering of the 4 parents is optimal → 4! = 24 optima (sample listed).
+LEN 30
+internetcomputerscienceprogram
+programscienceinternetcomputer
+sciencecomputerprograminternet
+computerinternetprogramscience

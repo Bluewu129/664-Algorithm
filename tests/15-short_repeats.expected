@@ -1,0 +1,7 @@
+# Fixture 15 — short_repeats — tests repeated 2-char patterns (ab/ba)
+# After substring-pruning: {aba, bab} (both length 3, mutual overlap 2)
+# Two optimal reconstructions of length 4.
+# Note: spec's "aperiodic" rule only forbids infinite strings; finite "abab" is OK.
+LEN 4
+abab
+baba

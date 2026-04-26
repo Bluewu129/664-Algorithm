@@ -29,8 +29,9 @@ TIMEOUT_SECONDS = 10
 
 
 def compile_brute_force():
+    # -std=c2x: instructor's brute-force uses C23 `bool` keyword without <stdbool.h>.
     result = subprocess.run(
-        ["gcc", "-O2", "-o", BINARY, SOURCE],
+        ["gcc", "-O2", "-std=c2x", "-o", BINARY, SOURCE],
         capture_output=True, text=True
     )
     if result.returncode != 0:

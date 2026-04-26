@@ -1,0 +1,3 @@
+# Fixture 06 — "bc" and "cd" are substrings of "abcd"; optimum is "abcd".
+LEN 4
+abcd

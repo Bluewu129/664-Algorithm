@@ -1,0 +1,7 @@
+# Fixture 18 — no_overlap_large — 8 length-2 fragments over 16 distinct characters
+# No pairwise overlap is possible → optimum = sum of lengths = 16
+# Every one of 8! = 40 320 orderings is optimal; sample listed:
+LEN 16
+axbyczdwevfugths
+hsgtfuevdwczbyax
+byaxczdwevfugths

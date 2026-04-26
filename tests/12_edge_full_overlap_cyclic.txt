@@ -1,5 +1,0 @@
-abcde
-eabcd
-deabc
-cdeab
-bcdea

@@ -1,0 +1,4 @@
+# Fixture 02 — two disjoint 1-char fragments → 2 optima of length 2.
+LEN 2
+ab
+ba

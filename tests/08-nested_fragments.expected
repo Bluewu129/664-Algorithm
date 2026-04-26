@@ -1,0 +1,3 @@
+# Fixture 08 — all short fragments are substrings of "abcd" itself.
+LEN 4
+abcd
