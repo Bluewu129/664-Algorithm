@@ -99,3 +99,11 @@ Held-Karp is only feasible for **n ≲ 20–25**.
 | Practical limit | Large n, large L | n ≲ 20–25 |
 
 ---
+
+## Handwritten Notes
+ 
+### Page 1 — Greedy
+![Handwritten notes page 1](greedy.jpg)
+ 
+### Page 2 — Held-Karp
+![Handwritten notes page 2](DP.jpg)
