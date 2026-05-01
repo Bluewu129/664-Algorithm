@@ -82,8 +82,6 @@
   DAB  在 ABCDA 中？ ✗  → ABCDA 不是有效答案
 ```
 
-> **注意：** 这个反例需要用 brute-force 验证真实最优解，
-> 建议运行 `GreedySCS.java` 和 brute-force 对比后再使用。
 
 贪心每步只看当前最大重叠，无法预判后续合并的影响，
 
