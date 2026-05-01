@@ -119,4 +119,3 @@ Counter-example: `["ABC", "BCD", "CDA", "DAB"]`
 - Optimal output: `"ABCDA"` (length 5)
 
 Greedy picks the locally best merge at each step, but this can block a better global arrangement.
-This is why we also implement **DP + Bitmask** to guarantee the optimal solution.
