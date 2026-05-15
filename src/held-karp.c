@@ -211,7 +211,7 @@ void held_karp(char *result, int *scs_len) {
     for (int mask = 1; mask < states; mask++) {
         for (int i = 0; i < n; i++) {
 
-            if (!(mask & (1 << i)))    continue;
+            if (!(mask & (1 << i)))     continue;
             if (dp[mask][i] == NEG_INF) continue;
 
             for (int j = 0; j < n; j++) {
@@ -235,7 +235,6 @@ void held_karp(char *result, int *scs_len) {
         if (dp[full_mask][i] != NEG_INF && dp[full_mask][i] > max_overlap)
             max_overlap = dp[full_mask][i];
 
-    // SCS length = sum of all fragment lengths - total overlap saved.
     int total_len = 0;
     for (int i = 0; i < n; i++) total_len += frag_len[i];
     *scs_len = total_len - max_overlap;
@@ -247,12 +246,6 @@ void held_karp(char *result, int *scs_len) {
 /*
  * Reconstruct the shortest common superstring by tracing parent pointers
  * back from the optimal terminal state to the single-fragment base case.
- *
- * Parameters:
- *   result -- output buffer (written in-place; must be large enough).
- *
- * Reads globals: dp[][], parent_mask[][], parent_last[][], fragments[][],
- *                frag_len[], overlap_matrix[][], n.
  */
 void reconstruct(char *result) {
     int full_mask = (1 << n) - 1;
@@ -277,7 +270,6 @@ void reconstruct(char *result) {
         cur_last = prev_l;
     }
 
-
     /* Reverse path so it reads first -> last. */
     for (int i = 0; i < path_len / 2; i++) {
         int tmp            = path[i];
@@ -294,39 +286,19 @@ void reconstruct(char *result) {
 }
 
 /*
- * Verify that every fragment in the global fragments[] array appears as a
- * substring of 'result'. Prints a per-fragment status line and a summary.
- *
- * Parameters:
- *   result -- the superstring to check against.
- */
-void verify_result(const char *result) {
-    printf("\n[Verification]\n");
-    int all_ok = 1;
-    for (int i = 0; i < n; i++) {
-        int found = (strstr(result, fragments[i]) != NULL);
-        printf("  Fragment %d (%s): %s\n",
-               i, fragments[i], found ? "FOUND" : "MISSING");
-        if (!found) all_ok = 0;
-    }
-    printf("\n  Overall: %s\n",
-           all_ok ? "All fragments verified"
-                  : "ERROR -- some fragments are missing");
-}
-
-/*
  * Main driver:
  *   1. Read fragments from a file path (or '-' for stdin) via the shared
  *      preprocessing layer (Role C).
  *   2. Strip dominated (substring) fragments via the shared layer.
  *   3. Build the overlap matrix via the shared layer.
  *   4. Sync the results into the static fragments[][], frag_len[],
- *      overlap_matrix[][] and n that the DP code below expects.
- *   5. Run Held-Karp DP. Print and verify the result. (Unchanged.)
+ *      overlap_matrix[][] and n that the DP code expects.
+ *   5. Run Held-Karp DP and print only the SCS string to stdout.
+ *
+ * Output: one line containing only the SCS string (identical format to
+ *         greedy_scs), suitable for parsing by bench.sh.
  */
 int main(int argc, char *argv[]) {
-    printf("=== Held-Karp Shortest Common Superstring ===\n\n");
-
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input_file | ->\n", argv[0]);
         return 1;
@@ -335,21 +307,19 @@ int main(int argc, char *argv[]) {
     /* --- Shared preprocessing (Role C) --- */
     Fragments f = load_fragments(argv[1]);
     if (f.n == 0) {
-        fprintf(stderr, "No fragments read.\n");
+        fprintf(stderr, "Error: no fragments read from '%s'.\n", argv[1]);
         free_fragments(&f);
         return 1;
     }
-    int removed = prune_substrings(&f);
-    if (removed > 0)
-        printf("[Info] Removed %d dominated fragment(s) (substrings of others).\n",
-               removed);
 
-    /* Sync into the static arrays the DP code below expects. */
+    prune_substrings(&f);
+
     if (f.n > MAX_N) {
         fprintf(stderr, "Error: n=%d exceeds MAX_N=%d.\n", f.n, MAX_N);
         free_fragments(&f);
         return 1;
     }
+
     n = f.n;
     for (int i = 0; i < n; i++) {
         if (f.len[i] >= MAX_LEN) {
@@ -371,13 +341,11 @@ int main(int argc, char *argv[]) {
     free_fragments(&f);
     /* --- End shared preprocessing --- */
 
-    print_overlap_matrix();
-
     char result[MAX_N * MAX_LEN];
     int  scs_len;
     held_karp(result, &scs_len);
 
-    /* Output: one line, just the SCS string — identical format to greedy_scs. */
+    /* Output: one line, just the SCS string. */
     puts(result);
     return 0;
 }
