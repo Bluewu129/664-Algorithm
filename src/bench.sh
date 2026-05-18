@@ -2,20 +2,29 @@
 # =============================================================================
 # bench.sh - Compare Held-Karp vs Greedy SCS on randomly generated inputs.
 #
-# Generates 5 random test cases with n fragments each, runs both solvers,
+# Generates test cases with n fragments each, runs both solvers,
 # and prints a side-by-side comparison of time and result length.
 # If n > 22, only Greedy is run (Held-Karp is too slow beyond that point).
 #
 # Usage:
-#   ./bench.sh <n>
-#   ./bench.sh <n> -random          # random fragment lengths (1-30), full ASCII printable charset
-#   ./bench.sh <n> -random <k>      # random fragment lengths (1-30), k randomly chosen characters
+#   ./bench.sh <n> [options]
+#
+# Options:
+#   -cases <k>      number of test cases to run (default: 5)
+#   -len <l>        fragment length; in random mode fixes length instead of
+#                   using 1-30 random (default: 6 normal, 1-30 random)
+#   -random         use full printable ASCII charset
+#   -random <k>     use k randomly chosen characters
 #
 # Examples:
-#   ./bench.sh 8              run both solvers, DNA fragments of length 6
-#   ./bench.sh 25             run greedy only (n > 22), DNA fragments of length 6
-#   ./bench.sh 8 -random      random lengths, full printable ASCII charset
-#   ./bench.sh 8 -random 5    random lengths, 5 randomly chosen characters
+#   ./bench.sh 8                        5 cases, DNA length 6
+#   ./bench.sh 8 -cases 10              10 cases, DNA length 6
+#   ./bench.sh 8 -len 12                5 cases, DNA length 12
+#   ./bench.sh 8 -cases 10 -len 12      10 cases, DNA length 12
+#   ./bench.sh 8 -random                5 cases, full ASCII, length 1-30
+#   ./bench.sh 8 -random 5              5 cases, 5 chars, length 1-30
+#   ./bench.sh 8 -random -cases 3       3 cases, full ASCII, length 1-30
+#   ./bench.sh 8 -random 5 -cases 3 -len 15   3 cases, 5 chars, fixed length 15
 #
 # Requirements:
 #   - ./held-karp and ./greedy_scs compiled in the current directory
@@ -25,45 +34,70 @@
 set -euo pipefail
 
 HK_LIMIT=22    # max n for which Held-Karp is run
-N_CASES=5      # number of test cases per run
-FRAG_LEN=6     # length of each generated fragment (normal mode)
-FRAG_MIN=1     # min fragment length in random mode
-FRAG_MAX=30    # max fragment length in random mode
+FRAG_MIN=1     # min fragment length in random mode (no -len)
+FRAG_MAX=30    # max fragment length in random mode (no -len)
 
 # ── Argument validation ───────────────────────────────────────────────────────
 
 if [[ $# -lt 1 ]]; then
-    echo "Usage: ./bench.sh <n> [-random [k]]"
-    echo "  n = number of fragments per test case"
-    echo "  -random     = random fragment lengths + full printable ASCII charset"
-    echo "  -random k   = random fragment lengths + k randomly chosen characters"
+    echo "Usage: ./bench.sh <n> [-cases k] [-len l] [-random [k]]"
     exit 1
 fi
 
 N="$1"
+shift
 
 if ! [[ "$N" =~ ^[0-9]+$ ]] || [[ "$N" -lt 1 ]]; then
     echo "Error: n must be a positive integer"
     exit 1
 fi
 
-# Parse -random and optional k
+# Defaults
+N_CASES=5
+FRAG_LEN=0       # 0 = not set by user
 RANDOM_MODE=0
-CHARSET_K=0   # 0 means full printable ASCII
+CHARSET_K=0      # 0 = full printable ASCII
 
-if [[ $# -ge 2 ]]; then
-    if [[ "$2" != "-random" ]]; then
-        echo "Error: unrecognised option '$2'. Did you mean -random?"
-        exit 1
-    fi
-    RANDOM_MODE=1
-    if [[ $# -ge 3 ]]; then
-        if ! [[ "$3" =~ ^[0-9]+$ ]] || [[ "$3" -lt 1 ]]; then
-            echo "Error: k must be a positive integer"
+# Parse remaining options in any order
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -cases)
+            if [[ $# -lt 2 ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -lt 1 ]]; then
+                echo "Error: -cases requires a positive integer"
+                exit 1
+            fi
+            N_CASES="$2"
+            shift 2
+            ;;
+        -len)
+            if [[ $# -lt 2 ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -lt 1 ]]; then
+                echo "Error: -len requires a positive integer"
+                exit 1
+            fi
+            FRAG_LEN="$2"
+            shift 2
+            ;;
+        -random)
+            RANDOM_MODE=1
+            # Optional: next arg is k (positive integer)
+            if [[ $# -ge 2 ]] && [[ "$2" =~ ^[0-9]+$ ]] && [[ "$2" -ge 1 ]]; then
+                CHARSET_K="$2"
+                shift 2
+            else
+                shift 1
+            fi
+            ;;
+        *)
+            echo "Error: unrecognised option '$1'"
+            echo "Usage: ./bench.sh <n> [-cases k] [-len l] [-random [k]]"
             exit 1
-        fi
-        CHARSET_K="$3"
-    fi
+            ;;
+    esac
+done
+
+# Apply -len default if not set
+if [[ "$FRAG_LEN" -eq 0 ]]; then
+    FRAG_LEN=6   # default for normal mode; random mode uses FRAG_MIN/FRAG_MAX
 fi
 
 # ── Check binaries ────────────────────────────────────────────────────────────
@@ -83,33 +117,46 @@ fi
 
 # ── Input generation ──────────────────────────────────────────────────────────
 
-# Normal mode: fixed length, ATGC only
+# Normal mode: fixed length, ATGC only, guaranteed no substring containment
 gen_fragments() {
     local n="$1" frag_len="$2" seed="$3" outfile="$4"
     python3 -c "
 import random
 random.seed($seed)
-for _ in range($n):
-    print(''.join(random.choice('ATGC') for _ in range($frag_len)))
+frags = []
+attempts = 0
+while len(frags) < $n:
+    attempts += 1
+    if attempts > 100000:
+        # fallback: just emit what we have to avoid infinite loop
+        break
+    f = ''.join(random.choice('ATGC') for _ in range($frag_len))
+    if not any(f in g or g in f for g in frags):
+        frags.append(f)
+for f in frags:
+    print(f)
 " > "$outfile"
 }
 
-# Random mode: variable length (FRAG_MIN-FRAG_MAX), custom charset
+# Random mode: fixed or variable length, custom charset
+# If frag_fixed > 0, use that fixed length; otherwise use frag_min..frag_max
 gen_fragments_random() {
-    local n="$1" frag_min="$2" frag_max="$3" seed="$4" k="$5" outfile="$6"
+    local n="$1" frag_min="$2" frag_max="$3" frag_fixed="$4" seed="$5" k="$6" outfile="$7"
     python3 -c "
 import random, string
 random.seed($seed)
 
-# Build charset
 if $k == 0:
-    pool = string.printable.strip()          # full printable ASCII, no whitespace
+    pool = string.printable.strip()
 else:
     full_pool = string.printable.strip()
     pool = ''.join(random.sample(full_pool, min($k, len(full_pool))))
 
 for _ in range($n):
-    length = random.randint($frag_min, $frag_max)
+    if $frag_fixed > 0:
+        length = $frag_fixed
+    else:
+        length = random.randint($frag_min, $frag_max)
     print(''.join(random.choice(pool) for _ in range(length)))
 " > "$outfile"
 }
@@ -147,23 +194,19 @@ echo ""
 echo "=============================================================="
 if [[ "$N" -gt "$HK_LIMIT" ]]; then
     if [[ "$RANDOM_MODE" -eq 1 ]]; then
-        if [[ "$CHARSET_K" -eq 0 ]]; then
-            echo "  SCS Benchmark  (n=$N)  —  Greedy only  [random mode, full ASCII]"
-        else
-            echo "  SCS Benchmark  (n=$N)  —  Greedy only  [random mode, k=$CHARSET_K chars]"
-        fi
+        CHARSET_DESC=$( [[ "$CHARSET_K" -eq 0 ]] && echo "full ASCII" || echo "k=$CHARSET_K chars" )
+        LEN_DESC=$( [[ "$FRAG_LEN" -ne 6 ]] && echo "len=$FRAG_LEN" || echo "len=1-$FRAG_MAX" )
+        echo "  SCS Benchmark  (n=$N, cases=$N_CASES)  —  Greedy only  [random: $CHARSET_DESC, $LEN_DESC]"
     else
-        echo "  SCS Benchmark  (n=$N)  —  Greedy only  (n > $HK_LIMIT, Held-Karp skipped)"
+        echo "  SCS Benchmark  (n=$N, cases=$N_CASES)  —  Greedy only  (n > $HK_LIMIT, Held-Karp skipped)  [len=$FRAG_LEN]"
     fi
 else
     if [[ "$RANDOM_MODE" -eq 1 ]]; then
-        if [[ "$CHARSET_K" -eq 0 ]]; then
-            echo "  SCS Benchmark  (n=$N)  —  Held-Karp vs Greedy  [random mode, full ASCII]"
-        else
-            echo "  SCS Benchmark  (n=$N)  —  Held-Karp vs Greedy  [random mode, k=$CHARSET_K chars]"
-        fi
+        CHARSET_DESC=$( [[ "$CHARSET_K" -eq 0 ]] && echo "full ASCII" || echo "k=$CHARSET_K chars" )
+        LEN_DESC=$( [[ "$FRAG_LEN" -ne 6 ]] && echo "len=$FRAG_LEN" || echo "len=1-$FRAG_MAX" )
+        echo "  SCS Benchmark  (n=$N, cases=$N_CASES)  —  Held-Karp vs Greedy  [random: $CHARSET_DESC, $LEN_DESC]"
     else
-        echo "  SCS Benchmark  (n=$N)  —  Held-Karp vs Greedy"
+        echo "  SCS Benchmark  (n=$N, cases=$N_CASES)  —  Held-Karp vs Greedy  [len=$FRAG_LEN]"
     fi
 fi
 echo "=============================================================="
@@ -180,12 +223,13 @@ printf '%.0s─' {1..85}; echo ""
 
 PASS=0; FAIL=0
 HK_FASTER=0; GR_FASTER=0; MATCH_COUNT=0
+TOTAL_HK_LEN=0; TOTAL_GR_LEN=0; TOTAL_EXCESS=0
 
 for case_idx in $(seq 1 "$N_CASES"); do
     input_file="${TMP}/case_${case_idx}.txt"
 
     if [[ "$RANDOM_MODE" -eq 1 ]]; then
-        gen_fragments_random "$N" "$FRAG_MIN" "$FRAG_MAX" "$case_idx" "$CHARSET_K" "$input_file"
+        gen_fragments_random "$N" "$FRAG_MIN" "$FRAG_MAX" "$FRAG_LEN" "$case_idx" "$CHARSET_K" "$input_file"
     else
         gen_fragments "$N" "$FRAG_LEN" "$case_idx" "$input_file"
     fi
@@ -222,6 +266,11 @@ for case_idx in $(seq 1 "$N_CASES"); do
         hk_len=${#hk_scs}
         gr_len=${#gr_scs}
 
+        # Accumulate length stats
+        (( TOTAL_HK_LEN += hk_len )) || true
+        (( TOTAL_GR_LEN += gr_len )) || true
+        (( TOTAL_EXCESS  += gr_len - hk_len )) || true
+
         # Compare result lengths
         if [[ "$hk_len" -eq "$gr_len" ]]; then
             verdict="same length"
@@ -253,8 +302,23 @@ printf "  Done: %d passed   %d failed\n" "$PASS" "$FAIL"
 
 if [[ "$N" -le "$HK_LIMIT" ]] && [[ "$PASS" -gt 0 ]]; then
     echo ""
-    printf "  Same length (greedy optimal) : %d / %d cases\n" "$MATCH_COUNT" "$PASS"
-    printf "  Held-Karp was faster         : %d / %d cases\n" "$HK_FASTER"   "$PASS"
-    printf "  Greedy was faster            : %d / %d cases\n" "$GR_FASTER"   "$PASS"
+    printf "  Greedy optimal rate          : %d / %d cases (%.1f%%)\n" \
+        "$MATCH_COUNT" "$PASS" "$(echo "scale=1; $MATCH_COUNT * 100 / $PASS" | bc)"
+    printf "  Held-Karp was faster         : %d / %d cases\n" "$HK_FASTER" "$PASS"
+    printf "  Greedy was faster            : %d / %d cases\n" "$GR_FASTER" "$PASS"
+
+    python3 -c "
+total_hk = $TOTAL_HK_LEN
+total_gr = $TOTAL_GR_LEN
+total_excess = $TOTAL_EXCESS
+n = $PASS
+
+avg_ratio  = total_gr / total_hk if total_hk > 0 else 0
+avg_excess = total_excess / n    if n > 0 else 0
+
+print()
+print(f'  Avg GR length / HK length    : {avg_ratio:.4f}  ({(avg_ratio-1)*100:+.2f}%)')
+print(f'  Avg excess chars (GR - HK)   : {avg_excess:+.2f} chars')
+"
 fi
 echo ""
