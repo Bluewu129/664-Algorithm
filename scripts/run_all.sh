@@ -88,8 +88,15 @@ for entry in "${FIXTURES[@]}"; do
 
         # Legacy BF concatenates multiple solutions with no separator;
         # split by expected length so validator sees one solution per line.
+        # Only fold when the cleaned blob is a strict multiple of expected_len
+        # (>= 2x) — otherwise a single suboptimal candidate of length != k*OPT
+        # (e.g. greedy on tests/21-greedy_adversarial.txt: 12 chars vs LEN 11)
+        # would be wrongly chopped and reported INVALID.
         out_clean=$(tr -d '\n\r ' < "$TMPOUT")
-        if [ -n "$expected_len" ] && [ "$expected_len" -gt 0 ] && [ -n "$out_clean" ]; then
+        out_clean_len=${#out_clean}
+        if [ -n "$expected_len" ] && [ "$expected_len" -gt 0 ] && [ -n "$out_clean" ] \
+           && [ "$out_clean_len" -gt "$expected_len" ] \
+           && [ $((out_clean_len % expected_len)) -eq 0 ]; then
             cands=$(printf "%s" "$out_clean" | fold -w "$expected_len")
         else
             cands=$(cat "$TMPOUT")

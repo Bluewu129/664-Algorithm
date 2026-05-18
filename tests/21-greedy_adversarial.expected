@@ -1,0 +1,35 @@
+# Fixture 21 — greedy_adversarial — forces the 4-approx gap between
+# Algorithm 2 (greedy) and Algorithm 1 (Held-Karp exact DP).
+#
+# Construction: four fragments built around a shared a^k core (k=4)
+#   F1 = aaaab   (a^k followed by b)
+#   F2 = aaaac   (a^k followed by c)
+#   F3 = baaaa   (b followed by a^k)
+#   F4 = caaaa   (c followed by a^k)
+# After substring-pruning no fragment is dominated, so all four reach
+# the merge stage.
+#
+# Pairwise max-overlap analysis:
+#   ov(F3,F1) = ov(F3,F2) = ov(F4,F1) = ov(F4,F2) = 4   <-- four-way tie
+#   all other pairs <= 1
+# Greedy uses strict-greater tie-breaking (src/greedy_scs.c:216), so it
+# picks the first scan-order pair at max overlap = (F3,F1). That commits
+# it to merging F3+F1 -> baaaab AND F4+F2 -> caaaac, leaving no useful
+# overlap between the two halves and forcing a concatenation:
+#       baaaab + caaaac = baaaabcaaaac    (length 12)
+#
+# The optimal reconstruction interleaves the cross-pairs F4+F1 and F3+F2
+# so the a^k cores are shared, achieving length k+7 = 11:
+#       caaaa | b | aaaa | c    -> caaaabaaaac
+#       baaaa | c | aaaa | b    -> baaaacaaaab
+# Both length-11 strings cover all four fragments:
+#       F4 at positions 0..4, F1 at 1..5, F3 at 5..9, F2 at 6..10
+# (and the b<->c-swapped mirror in baaaacaaaab).
+#
+# Expected harness outcome:
+#   alg1_bitmask_dp  -> OPTIMAL (length 11)
+#   alg2_tgreedy     -> CORRECT but not OPTIMAL (length 12, strictly > 11)
+#   ref_bf           -> OPTIMAL or TIMEOUT depending on enumeration cost
+LEN 11
+caaaabaaaac
+baaaacaaaab
