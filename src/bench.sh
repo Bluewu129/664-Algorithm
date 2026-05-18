@@ -224,6 +224,7 @@ printf '%.0s─' {1..85}; echo ""
 PASS=0; FAIL=0
 HK_FASTER=0; GR_FASTER=0; MATCH_COUNT=0
 TOTAL_HK_LEN=0; TOTAL_GR_LEN=0; TOTAL_EXCESS=0
+TOTAL_HK_US=0; TOTAL_GR_US=0
 
 for case_idx in $(seq 1 "$N_CASES"); do
     input_file="${TMP}/case_${case_idx}.txt"
@@ -266,10 +267,12 @@ for case_idx in $(seq 1 "$N_CASES"); do
         hk_len=${#hk_scs}
         gr_len=${#gr_scs}
 
-        # Accumulate length stats
+       # Accumulate length stats
         (( TOTAL_HK_LEN += hk_len )) || true
         (( TOTAL_GR_LEN += gr_len )) || true
         (( TOTAL_EXCESS  += gr_len - hk_len )) || true
+        (( TOTAL_HK_US += hk_us )) || true
+        (( TOTAL_GR_US += gr_us )) || true
 
         # Compare result lengths
         if [[ "$hk_len" -eq "$gr_len" ]]; then
@@ -319,6 +322,14 @@ avg_excess = total_excess / n    if n > 0 else 0
 print()
 print(f'  Avg GR length / HK length    : {avg_ratio:.4f}  ({(avg_ratio-1)*100:+.2f}%)')
 print(f'  Avg excess chars (GR - HK)   : {avg_excess:+.2f} chars')
+
+avg_hk_us = $TOTAL_HK_US / n if n > 0 else 0
+avg_gr_us = $TOTAL_GR_US / n if n > 0 else 0
+print()
+print(f'  Avg Held-Karp time           : {avg_hk_us:.0f}µs')
+print(f'  Avg Greedy time              : {avg_gr_us:.0f}µs')
+print(f'  Avg time ratio (HK / GR)     : {avg_hk_us/avg_gr_us:.2f}x' if avg_gr_us > 0 else '  Avg time ratio (HK / GR)     : N/A')
+print(f'  Avg excess time (HK - GR)    : {(avg_hk_us - avg_gr_us)/1000:+.2f} ms')
 "
 fi
 echo ""
