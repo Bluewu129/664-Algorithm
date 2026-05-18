@@ -245,6 +245,7 @@ for case_idx in $(seq 1 "$N_CASES"); do
             gr_us=$(echo "$gr_out"  | awk '{print $1}')
             gr_scs=$(echo "$gr_out" | awk '{print $2}')
             printf "%-5s  %9sµs  %s\n" "$case_idx" "$gr_us" "$gr_scs"
+            (( TOTAL_GR_US += gr_us )) || true
             (( PASS++ )) || true
         fi
     else
@@ -302,6 +303,12 @@ done
 
 printf '%.0s─' {1..85}; echo ""
 printf "  Done: %d passed   %d failed\n" "$PASS" "$FAIL"
+if [[ "$N" -gt "$HK_LIMIT" ]] && [[ "$PASS" -gt 0 ]]; then
+    python3 -c "
+avg_gr_us = $TOTAL_GR_US / $PASS
+print(f'\n  Avg Greedy time              : {avg_gr_us:.0f}µs  ({avg_gr_us/1000:.2f} ms)')
+"
+fi
 
 if [[ "$N" -le "$HK_LIMIT" ]] && [[ "$PASS" -gt 0 ]]; then
     echo ""
