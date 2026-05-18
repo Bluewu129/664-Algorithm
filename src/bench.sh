@@ -121,8 +121,8 @@ fi
 gen_fragments() {
     local n="$1" frag_len="$2" seed="$3" outfile="$4"
     python3 -c "
-import random
-random.seed($seed)
+import random, time
+random.seed($seed + int(time.time() * 1000))
 frags = []
 attempts = 0
 while len(frags) < $n:
